@@ -75,8 +75,6 @@ func (serv *dataServer) handleUpdates() {
 	for {
 		data := <-serv.broadcast
 
-		// fmt.Printf(data)
-
 		for client := range serv.clients {
 			err := client.WriteJSON(string(data))
 			if err != nil {

@@ -19,25 +19,18 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
-
-	"github.com/tidwall/gjson"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-const jsonHell = `{"list": [ { "name": "New York", "ID": "NY0", "sentiment": -0.0030300168, "tid":984908849458110464, "centerLat":40.7128, "centerLon":-74.006, "weather": { "main":"Clear", "description":"clear sky", "temp": 84.00 } }, { "name": "New York", "ID": "NY0", "sentiment": -0.0030257932, "tid":984909342137815040, "centerLat":40.7128, "centerLon":-74.006, "weather": { "main":"Clear", "description":"clear sky", "temp": 82.00 } }, { "name": "New York", "ID": "NY0", "sentiment":-0.0031428882, "tid":984909850076499970, "centerLat":40.7128, "centerLon":-74.006, "weather": { "main":"Clear", "description":"clear sky", "temp": 81.75 } }, { "name":"Los Angeles", "ID": "LA0", "sentiment":-0.006765286, "tid":984908841497149440, "centerLat":34.0522, "centerLon":-118.2437, "weather": { "main":"Dust", "description":"dust", "temp": 76.75 } }, { "name":"Los Angeles", "ID": "LA0", "sentiment":-0.0068500843, "tid":984909365500174336, "centerLat":34.0522, "centerLon":-118.2437, "weather": { "main":"Dust", "description":"dust", "temp": 75.75 } }, { "name":"Los Angeles", "ID": "LA0", "sentiment":-0.00699275, "tid":984909860306280449, "centerLat":34.0522, "centerLon":-118.2437, "weather": { "main":"Dust", "description":"dust", "temp": 71.75 } }, { "name":"Seattle", "ID": "SEA0", "sentiment":-0.0026830027, "tid":984908889740034049, "centerLat":47.6062, "centerLon":-122.3321, "weather": { "main":"Rain", "description":"light rain", "temp": 49.60 } }, { "name":"Seattle", "ID": "SEA0", "sentiment":-0.0026437445, "tid":984909868053118976, "centerLat":47.6062, "centerLon":-122.3321, "weather": { "main":"Rain", "description":"light rain", "temp": 48.75 } }, { "name":"Seattle", "ID": "SEA0", "sentiment":-0.00699275, "tid":984909860306280449, "centerLat":47.6062, "centerLon":-122.3321, "weather": { "main":"Drizzle", "description":"light intensity drizzle", "temp": 49.8 } } ]}`
+var jsonHell = [9]string{`{ "name": "New York", "ID": "NY0", "sentiment": -0.0030300168, "tid":984908849458110464, "centerLat":40.7128, "centerLon":-74.006, "weather": { "main":"Clear", "description":"clear sky", "temp": 84.00 } }`, `{ "name": "New York", "ID": "NY0", "sentiment": -0.0030257932, "tid":984909342137815040, "centerLat":40.7128, "centerLon":-74.006, "weather": { "main":"Clear", "description":"clear sky", "temp": 82.00 } }`, `{ "name": "New York", "ID": "NY0", "sentiment":-0.0031428882, "tid":984909850076499970, "centerLat":40.7128, "centerLon":-74.006, "weather": { "main":"Clear", "description":"clear sky", "temp": 81.75 } }`, `{ "name":"Los Angeles", "ID": "LA0", "sentiment":-0.006765286, "tid":984908841497149440, "centerLat":34.0522, "centerLon":-118.2437, "weather": { "main":"Dust", "description":"dust", "temp": 76.75 } }`, `{ "name":"Los Angeles", "ID": "LA0", "sentiment":-0.0068500843, "tid":984909365500174336, "centerLat":34.0522, "centerLon":-118.2437, "weather": { "main":"Dust", "description":"dust", "temp": 75.75 } }`, `{ "name":"Los Angeles", "ID": "LA0", "sentiment":-0.00699275, "tid":984909860306280449, "centerLat":34.0522, "centerLon":-118.2437, "weather": { "main":"Dust", "description":"dust", "temp": 71.75 } }`, `{ "name":"Seattle", "ID": "SEA0", "sentiment":-0.0026830027, "tid":984908889740034049, "centerLat":47.6062, "centerLon":-122.3321, "weather": { "main":"Rain", "description":"light rain", "temp": 49.60 } }`, `{ "name":"Seattle", "ID": "SEA0", "sentiment":-0.0026437445, "tid":984909868053118976, "centerLat":47.6062, "centerLon":-122.3321, "weather": { "main":"Rain", "description":"light rain", "temp": 48.75 } }`, `{ "name":"Seattle", "ID": "SEA0", "sentiment":-0.00699275, "tid":984909860306280449, "centerLat":47.6062, "centerLon":-122.3321, "weather": { "main":"Drizzle", "description":"light intensity drizzle", "temp": 49.8 } } ]}`}
 
 func main() {
-
-	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <broker> <topic>\n",
-			os.Args[0])
-		os.Exit(1)
-	}
-
-	broker := os.Args[1]
-	topic := os.Args[2]
+	broker := 0
+	topic := "test"
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": broker})
 
@@ -83,9 +76,7 @@ func main() {
 }
 
 func getFakeData() []byte {
-	// rand.Seed(time.Now().Unix())
-	// n := rand.Int() % 9
-	ret := gjson.Get(jsonHell, "*").Str
-	fmt.Println(ret)
-	return []byte(ret)
+	rand.Seed(time.Now().Unix())
+	n := rand.Int() % 9
+	return []byte(jsonHell[n])
 }
