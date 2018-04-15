@@ -10,6 +10,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"sync"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/tidwall/gjson"
 )
@@ -61,8 +63,8 @@ func (serv *dataServer) handleConnections(w http.ResponseWriter, r *http.Request
 
 func (serv *dataServer) sendCached(client *websocket.Conn) {
 	fmt.Println("In sendCached")
-	for data := range serv.consumer.data {
-		err := client.WriteJSON(string(data))
+	for name := range serv.consumer.data {
+		err := client.WriteJSON(string(serv.consumer.data[name]))
 		if err != nil {
 			fmt.Printf("error: %v", err)
 			client.Close()
@@ -99,6 +101,8 @@ func NewConsumer(stream chan []byte) *Consumer {
 }
 
 func (cons *Consumer) StartConsumer() {
+	var mutex sync.Mutex
+
 	topics := []string{"test"}
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -135,7 +139,7 @@ func (cons *Consumer) StartConsumer() {
 			case *kafka.Message:
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
-				go cons.handleData(e.Value)
+				go cons.handleData(e.Value, &mutex)
 			case kafka.PartitionEOF:
 				fmt.Printf("%% Reached %v\n", e)
 			case kafka.Error:
@@ -151,9 +155,12 @@ func (cons *Consumer) StartConsumer() {
 	fmt.Printf("Closing consumer\n")
 }
 
-func (cons *Consumer) handleData(finalData []byte) {
+func (cons *Consumer) handleData(finalData []byte, mutex *sync.Mutex) {
 	name := gjson.Get(string(finalData), "name").Str
+
+	mutex.Lock()
 	cons.data[name] = finalData
+	mutex.Unlock()
 
 	cons.stream <- finalData
 }
