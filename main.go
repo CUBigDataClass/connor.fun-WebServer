@@ -8,5 +8,8 @@ import (
 
 func main() {
 	serv := server.NewServer()
-	serv.StartServer(os.Args[1], os.Args[2], os.Args[3])
+	serverPort := string(os.Args[1])
+	brokerIP := string(os.Args[2])
+	brokerPort := string(os.Args[3])
+	serv.StartServer(serverPort, brokerIP, brokerPort)
 }
