@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/CUBigDataClass/connor.fun-Kafka/consumer"
-	"github.com/aaronaaeng/eventsource"
+	"github.com/aaronaaeng/event-source-add"
 )
 
 type DataServer struct {
@@ -16,10 +16,12 @@ type DataServer struct {
 	cons       *consumer.Consumer
 	messageID  int
 	es         eventsource.EventSource
+	addAlert   chan bool
 }
 
 func NewServer(serverPort string, brokerIP string, brokerPort string) {
-	var stream chan string
+	stream := make(chan string)
+	addAlert := make(chan bool)
 
 	cons := consumer.NewConsumer(stream, brokerIP, brokerPort)
 	serv := DataServer{
@@ -28,7 +30,7 @@ func NewServer(serverPort string, brokerIP string, brokerPort string) {
 		cons:       cons,
 		messageID:  0,
 		es: eventsource.New(
-			cons,
+			addAlert,
 			&eventsource.Settings{
 				Timeout:        5 * time.Second,
 				CloseOnTimeout: false,
@@ -51,17 +53,26 @@ func NewServer(serverPort string, brokerIP string, brokerPort string) {
 func (serv *DataServer) startServer() {
 	defer serv.es.Close()
 	http.Handle("/", serv.es)
-	go serv.sendUpdates()
+
+	go func() {
+		for {
+			select {
+			case data := <-serv.dataStream:
+				serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
+				serv.messageID++
+			case addedClient := <-serv.addAlert:
+				if addedClient {
+					for _, data := range serv.cons.Data {
+						serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
+						serv.messageID++
+					}
+				}
+			}
+		}
+	}()
 
 	log.Fatal(http.ListenAndServe(":"+serv.serverPort, nil))
 }
 
 func (serv *DataServer) sendUpdates() {
-	for {
-		select {
-		case data := <-serv.dataStream:
-			serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
-			serv.messageID++
-		}
-	}
 }
