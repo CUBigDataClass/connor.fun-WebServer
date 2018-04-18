@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/CUBigDataClass/connor.fun-Kafka/consumer"
-	"gopkg.in/antage/eventsource.v1"
+	"github.com/aaronaaeng/eventsource"
 )
 
 type DataServer struct {
@@ -28,6 +28,7 @@ func NewServer(serverPort string, brokerIP string, brokerPort string) {
 		cons:       cons,
 		messageID:  0,
 		es: eventsource.New(
+			cons,
 			&eventsource.Settings{
 				Timeout:        5 * time.Second,
 				CloseOnTimeout: false,
@@ -62,11 +63,5 @@ func (serv *DataServer) sendUpdates() {
 			serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
 			serv.messageID++
 		}
-	}
-}
-
-func (serv *DataServer) sendCurrent(http.ResponseWriter, *http.Request) {
-	for _, data := range serv.cons.Data {
-		serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
 	}
 }

@@ -1,21 +1,29 @@
-## connor.fun-Kafka
+# connor.fun-Kafka
 
-This is the current place development location for kafka consumption/data serving.  Please ignore the commits to master, I forgot to create a new branch and it was too late.
+This server is how users get the most recent region data when they load the website.  It uses server-side events to send this information.  When a user connects, they are sent the most up-to-date data available.  Every time there is an update to any region, that new data is sent to all of the clients.
 
-Currently, there is a small self-contained build that you can run.  This can be found in the LocalTest directory. 
+## Deployment
 
-### Manual Local Test
+### Requirements
 
-First, you need to run Kafka locally.  Follow this quickstart guide to see how it is done: https://kafka.apache.org/quickstart
+This server requires `librdkafka` to run.  This can be installed by following the instructions on the [official GitHub repo](https://github.com/edenhill/librdkafka).
 
-In order to run the local consumer/producer, you must first install `rdkafka`.  Clone this repo and follow the instructions in the README: https://github.com/edenhill/librdkafka
+#### Note for AWS
 
-The local consumer/producers require the local broker ID to equal 0, for the broker server/port to remain at the default settings, and for the topic to be named "test".
+If you are running the standard Amazon Linux distribution on your EC2 instance, or if you just encounter this error somewhere else, there are two things you must do in order to use this library.  First, ensure that you have `gcc-g++` installed prior to beginning installation.  After installation, you will need to export an environment variable.  Simply add `export LD_LIBRARY_PATH=/usr/local/lib` to your `.bashrc` and you're good to go.
 
-Once Kafka is running with those parameters, `./produceLoop` will randomly select a sample JSON object.  Every 10 seconds, it will randomly select one of nine sample data-points and put it in the queue.  Running `./hackyServer` will start a server at `localhost:8000`.  This will accept websocket connections.  Once a new connection is established, all data that has been collected so far will be sent to the new client.  
+### Go Dependencies
 
-**NOTE**: The server does not get any data that is already logged when it starts.  This means that `./produceLoop` or `./produceOnce`  need to be run before making a new websocket connection in order to get initial data. 
+If you have `dep` installed, just navigate to the directory and run `dep ensure`.  Otherwise, just run it and see what breaks.  It'll tell you you're missing packages in case you need them.
 
-#### Automated Local Test
+This project uses a fork of `antage/eventsource`.  The only adjustments that have been made cause the most recent data to be pushed to any new client.
 
-I have created a simple script called `auto-start.sh`.  This can be found in the `LocalTest` directory.  This directory even contains the Kafka source because that's what I decided to do for you.  `./auto-run.sh` will start the zookeeper and a broker.  `./produceLoop` will start the looping producer.  From here, run `./hackyServer` to start a server.  This shell script is the sketchiest thing I've ever written.  You will likely see error messages saying that Kafka encountered a fatal error and is shutting down.  However, it never does shut down.  There is also a chance that the looping producer never exists.  If that risk is too much for you, you can instead do `./produceOnce`.  Don't ask me why I built two files that are almost identical instead of taking command-line arguments
+### Building/Running
+
+The file you want to `go run` and `go build` is called `main.go`.  It takes parameters as command line arguments.  If you do not include these, you will not get an error so always check that the parameters are correct.
+
+To run, simply do `go run main.go <desired-server-host-port> <kafka-broker-ip-address> <kafka-broker-port>`.  You should then be able to see the output from the Kafka consumer.
+
+### Testing
+
+Unit tests?  Who needs them?!?  The quick and dirty way to test is to open the console in your favorite non-Microsoft browser and run `var evtSource = new EventSource("http://<server-host-ip-address>:<server-host-port>", {} );`.  If you don't see any errors, then it's working.
