@@ -54,6 +54,8 @@ func (serv *DataServer) startServer() {
 	defer serv.es.Close()
 	http.Handle("/", serv.es)
 
+	log.Fatal(http.ListenAndServe(":"+serv.serverPort, nil))
+
 	go func() {
 		for {
 			select {
@@ -70,8 +72,6 @@ func (serv *DataServer) startServer() {
 			}
 		}
 	}()
-
-	log.Fatal(http.ListenAndServe(":"+serv.serverPort, nil))
 }
 
 func (serv *DataServer) sendUpdates() {
