@@ -73,6 +73,3 @@ func (serv *DataServer) startServer() {
 		}
 	}()
 }
-
-func (serv *DataServer) sendUpdates() {
-}
