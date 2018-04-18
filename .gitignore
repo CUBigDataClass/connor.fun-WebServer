@@ -1,2 +1,3 @@
-localTest/kafka/
-localTest/kafka/*
+.vscode
+localTest
+localTest/*
