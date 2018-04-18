@@ -27,15 +27,11 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/aaronaaeng/eventsource"
+  name = "github.com/aaronaaeng/event-source-add"
 
 [[constraint]]
   name = "github.com/confluentinc/confluent-kafka-go"
   version = "0.11.4"
-
-[[constraint]]
-  name = "github.com/gorilla/websocket"
-  version = "1.2.0"
 
 [[constraint]]
   name = "github.com/tidwall/gjson"
