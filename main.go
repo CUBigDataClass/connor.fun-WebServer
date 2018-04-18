@@ -7,9 +7,8 @@ import (
 )
 
 func main() {
-	serv := server.NewServer()
 	serverPort := string(os.Args[1])
 	brokerIP := string(os.Args[2])
 	brokerPort := string(os.Args[3])
-	serv.StartServer(serverPort, brokerIP, brokerPort)
+	server.NewServer(serverPort, brokerIP, brokerPort)
 }

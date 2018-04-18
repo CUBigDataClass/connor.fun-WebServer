@@ -1,80 +1,72 @@
 package server
 
 import (
-	"fmt"
+	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/CUBigDataClass/connor.fun-Kafka/consumer"
-	"github.com/gorilla/websocket"
+	"gopkg.in/antage/eventsource.v1"
 )
 
 type DataServer struct {
-	clients   map[*websocket.Conn]bool
-	broadcast chan []byte
-	consumer  *consumer.Consumer
-	upgrader  websocket.Upgrader
+	serverPort string
+	dataStream chan string
+	cons       *consumer.Consumer
+	messageID  int
+	es         eventsource.EventSource
 }
 
-func NewServer() *DataServer {
-	broadcastStream := make(chan []byte)
-	return &DataServer{
-		clients:   make(map[*websocket.Conn]bool),
-		broadcast: broadcastStream,
-		consumer:  consumer.NewConsumer(broadcastStream),
-		upgrader:  websocket.Upgrader{},
+func NewServer(serverPort string, brokerIP string, brokerPort string) {
+	var stream chan string
+
+	cons := consumer.NewConsumer(stream, brokerIP, brokerPort)
+	serv := DataServer{
+		serverPort: serverPort,
+		dataStream: stream,
+		cons:       cons,
+		messageID:  0,
+		es: eventsource.New(
+			&eventsource.Settings{
+				Timeout:        5 * time.Second,
+				CloseOnTimeout: false,
+				IdleTimeout:    30 * time.Minute,
+			},
+			func(req *http.Request) [][]byte {
+				return [][]byte{
+					[]byte("X-Accel-Buffering: no"),
+					[]byte("Access-Control-Allow-Origin: *"),
+					[]byte("Access-Control-Expose-Headers: *"),
+					[]byte("Access-Control-Allow-Credentials: true"),
+				}
+			}),
 	}
+	go serv.cons.StartConsumer()
+
+	serv.startServer()
 }
 
-func (serv *DataServer) StartServer(serverPort string, brokerIP string, brokerPort string) {
-	go serv.consumer.StartConsumer(brokerIP, brokerPort)
+func (serv *DataServer) startServer() {
+	defer serv.es.Close()
+	http.Handle("/", serv.es)
+	go serv.sendUpdates()
 
-	http.HandleFunc("/", serv.handleConnections)
-
-	http.HandleFunc("/ws", serv.handleConnections)
-
-	go serv.handleUpdates()
-
-	fmt.Println("http server started on :%s", serverPort)
-	fmt.Println(":" + serverPort)
-	err := http.ListenAndServe(":"+serverPort, nil)
-	if err != nil {
-		fmt.Println("ListenAndServe: ", err)
-	}
+	log.Fatal(http.ListenAndServe(":"+serv.serverPort, nil))
 }
 
-func (serv *DataServer) handleConnections(w http.ResponseWriter, r *http.Request) {
-	ws, err := serv.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	serv.clients[ws] = true
-	serv.sendCached(ws)
-}
-
-func (serv *DataServer) sendCached(client *websocket.Conn) {
-	fmt.Println("In sendCached")
-	for name := range serv.consumer.Data {
-		err := client.WriteJSON(string(serv.consumer.Data[name]))
-		if err != nil {
-			fmt.Printf("error: %v", err)
-			client.Close()
-			delete(serv.clients, client)
-		}
-	}
-}
-
-func (serv *DataServer) handleUpdates() {
+func (serv *DataServer) sendUpdates() {
 	for {
-		data := <-serv.broadcast
-
-		for client := range serv.clients {
-			err := client.WriteJSON(string(data))
-			if err != nil {
-				fmt.Printf("error: %v", err)
-				client.Close()
-				delete(serv.clients, client)
-			}
+		select {
+		case data := <-serv.dataStream:
+			serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
+			serv.messageID++
 		}
+	}
+}
+
+func (serv *DataServer) sendCurrent(http.ResponseWriter, *http.Request) {
+	for _, data := range serv.cons.Data {
+		serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
 	}
 }

@@ -12,18 +12,22 @@ import (
 )
 
 type Consumer struct {
-	Data   map[string][]byte
-	stream chan []byte
+	Data       map[string]string
+	stream     chan string
+	brokerIP   string
+	brokerPort string
 }
 
-func NewConsumer(stream chan []byte) *Consumer {
+func NewConsumer(stream chan string, brokerIP string, brokerPort string) *Consumer {
 	return &Consumer{
-		Data:   make(map[string][]byte),
-		stream: stream,
+		Data:       make(map[string]string),
+		stream:     stream,
+		brokerIP:   brokerIP,
+		brokerPort: brokerPort,
 	}
 }
 
-func (cons *Consumer) StartConsumer(brokerIP string, brokerPort string) {
+func (cons *Consumer) StartConsumer() {
 	var mutex sync.Mutex
 
 	topics := []string{"test"}
@@ -31,7 +35,7 @@ func (cons *Consumer) StartConsumer(brokerIP string, brokerPort string) {
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":    brokerIP + ":" + brokerPort,
+		"bootstrap.servers":    cons.brokerIP + ":" + cons.brokerPort,
 		"group.id":             "cons",
 		"session.timeout.ms":   6000,
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"}})
@@ -62,7 +66,7 @@ func (cons *Consumer) StartConsumer(brokerIP string, brokerPort string) {
 			case *kafka.Message:
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
-				go cons.handleData(e.Value, &mutex)
+				go cons.handleData(string(e.Value), &mutex)
 			case kafka.PartitionEOF:
 				fmt.Printf("%% Reached %v\n", e)
 			case kafka.Error:
@@ -78,8 +82,8 @@ func (cons *Consumer) StartConsumer(brokerIP string, brokerPort string) {
 	fmt.Printf("Closing consumer\n")
 }
 
-func (cons *Consumer) handleData(finalData []byte, mutex *sync.Mutex) {
-	name := gjson.Get(string(finalData), "name").Str
+func (cons *Consumer) handleData(finalData string, mutex *sync.Mutex) {
+	name := gjson.Get(finalData, "name").Str
 
 	mutex.Lock()
 	cons.Data[name] = finalData
