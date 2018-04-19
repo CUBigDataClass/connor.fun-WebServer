@@ -1,6 +1,6 @@
-# connor.fun-Kafka
+# connor.fun-WebServer
 
-This server is how users get the most recent region data when they load the website.  It uses server-side events to send this information.  When a user connects, they are sent the most up-to-date data available.  Every time there is an update to any region, that new data is sent to all of the clients.
+This server is how users get the most recent region data when they load the website.  It uses server-side events to send this information.  Every time there is an update to any region, that new data is sent to all of the clients.
 
 ## Deployment
 
@@ -16,8 +16,6 @@ If you are running the standard Amazon Linux distribution on your EC2 instance, 
 
 If you have `dep` installed, just navigate to the directory and run `dep ensure`.  Otherwise, just run it and see what breaks.  It'll tell you you're missing packages in case you need them.
 
-This project uses a fork of `antage/eventsource`.  The only adjustments that have been made cause the most recent data to be pushed to any new client.
-
 ### Building/Running
 
 The file you want to `go run` and `go build` is called `main.go`.  It takes parameters as command line arguments.  If you do not include these, you will not get an error so always check that the parameters are correct.
@@ -26,4 +24,4 @@ To run, simply do `go run main.go <desired-server-host-port> <kafka-broker-ip-ad
 
 ### Testing
 
-Unit tests?  Who needs them?  The quick and dirty way to test is to open the console in your favorite non-Microsoft browser and run `var evtSource = new EventSource("http://<server-host-ip-address>:<server-host-port>", {} );`.  If you don't see any errors, then it's working.
+Unit tests?  Who needs them?  The quick and dirty way to test is to open the console in your favorite non-Microsoft browser and run `var evtSource = new EventSource("http://<server-host-ip-address>:<server-host-port>", {} );`.  Then run `evtSource.addEventListener("message", (e) => console.log(e.data))`.  If you don't see any errors, and you eventually see data, then it's working.
