@@ -1,6 +1,6 @@
 # connor.fun-WebServer
 
-This server is how users get the most recent region data when they load the website.  It uses server-side events to send this information.  Every time there is an update to any region, that new data is sent to all of the clients.
+This server is how users get the most recent region data when they load the website.  It uses server-side events to send this information.  In order to get all of the current data, send a `GET` request to `<server-ip>:<server-port>/current`.  Every time there is an update to any region, that new data is sent to all of the clients.
 
 ## Deployment
 
