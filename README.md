@@ -26,4 +26,4 @@ To run, simply do `go run main.go <desired-server-host-port> <kafka-broker-ip-ad
 
 ### Testing
 
-Unit tests?  Who needs them?!?  The quick and dirty way to test is to open the console in your favorite non-Microsoft browser and run `var evtSource = new EventSource("http://<server-host-ip-address>:<server-host-port>", {} );`.  If you don't see any errors, then it's working.
+Unit tests?  Who needs them?  The quick and dirty way to test is to open the console in your favorite non-Microsoft browser and run `var evtSource = new EventSource("http://<server-host-ip-address>:<server-host-port>", {} );`.  If you don't see any errors, then it's working.

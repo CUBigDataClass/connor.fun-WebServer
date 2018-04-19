@@ -1,13 +1,14 @@
-package server
+package main
 
 import (
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/CUBigDataClass/connor.fun-Kafka/consumer"
-	"github.com/aaronaaeng/event-source-add"
+	"github.com/antage/eventsource"
 )
 
 type DataServer struct {
@@ -19,57 +20,42 @@ type DataServer struct {
 	addAlert   chan bool
 }
 
-func NewServer(serverPort string, brokerIP string, brokerPort string) {
-	stream := make(chan string)
-	addAlert := make(chan bool)
+func main() {
+	serverPort := string(os.Args[1])
+	brokerIP := string(os.Args[2])
+	brokerPort := string(os.Args[3])
+	dataStream := make(chan string)
 
-	cons := consumer.NewConsumer(stream, brokerIP, brokerPort)
-	serv := DataServer{
-		serverPort: serverPort,
-		dataStream: stream,
-		cons:       cons,
-		messageID:  0,
-		es: eventsource.New(
-			addAlert,
-			&eventsource.Settings{
-				Timeout:        5 * time.Second,
-				CloseOnTimeout: false,
-				IdleTimeout:    30 * time.Minute,
-			},
-			func(req *http.Request) [][]byte {
-				return [][]byte{
-					[]byte("X-Accel-Buffering: no"),
-					[]byte("Access-Control-Allow-Origin: *"),
-					[]byte("Access-Control-Expose-Headers: *"),
-					[]byte("Access-Control-Allow-Credentials: true"),
-				}
-			}),
-	}
-	go serv.cons.StartConsumer()
+	cons := consumer.NewConsumer(dataStream, brokerIP, brokerPort)
+	go cons.StartConsumer()
 
-	serv.startServer()
-}
-
-func (serv *DataServer) startServer() {
-	defer serv.es.Close()
-	http.Handle("/", serv.es)
-
-	log.Fatal(http.ListenAndServe(":"+serv.serverPort, nil))
+	es := eventsource.New(
+		&eventsource.Settings{
+			Timeout:        5 * time.Second,
+			CloseOnTimeout: false,
+			IdleTimeout:    30 * time.Minute,
+		},
+		func(req *http.Request) [][]byte {
+			return [][]byte{
+				[]byte("X-Accel-Buffering: no"),
+				[]byte("Access-Control-Allow-Origin: *"),
+				[]byte("Access-Control-Expose-Headers: *"),
+				[]byte("Access-Control-Allow-Credentials: true"),
+			}
+		})
+	defer es.Close()
+	http.Handle("/", es)
 
 	go func() {
+		messageID := 0
 		for {
 			select {
-			case data := <-serv.dataStream:
-				serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
-				serv.messageID++
-			case addedClient := <-serv.addAlert:
-				if addedClient {
-					for _, data := range serv.cons.Data {
-						serv.es.SendEventMessage(data, "message", strconv.Itoa(serv.messageID))
-						serv.messageID++
-					}
-				}
+			case data := <-dataStream:
+				es.SendEventMessage(data, "message", strconv.Itoa(messageID))
+				messageID++
+			default:
 			}
 		}
 	}()
+	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
 }
