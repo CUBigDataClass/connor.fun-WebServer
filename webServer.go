@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +12,13 @@ import (
 	"github.com/CUBigDataClass/connor.fun-Kafka/consumer"
 	"github.com/antage/eventsource"
 )
+
+type WebServer struct {
+	serverPort string
+	dataStream chan string
+	cons       *consumer.Consumer
+	es         eventsource.EventSource
+}
 
 func main() {
 	serverPort := string(os.Args[1])
@@ -35,8 +44,16 @@ func main() {
 			}
 		})
 
+	serv := &WebServer{
+		serverPort: serverPort,
+		dataStream: dataStream,
+		cons:       cons,
+		es:         es,
+	}
+
 	defer es.Close()
 
+	http.HandleFunc("/current", serv.getCurrent)
 	http.Handle("/", es)
 
 	go func() {
@@ -51,4 +68,26 @@ func main() {
 		}
 	}()
 	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
+}
+
+func (serv *WebServer) getCurrent(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/current" {
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		response := "["
+
+		for _, data := range serv.cons.Data {
+			response += data + ", "
+		}
+		response += "]"
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			panic(err)
+		}
+	default:
+		fmt.Fprintf(w, "Bad GET request")
+	}
 }
