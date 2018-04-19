@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/tidwall/gjson"
 )
 
 type Consumer struct {
-	Data       map[string]string
 	stream     chan string
 	brokerIP   string
 	brokerPort string
@@ -20,7 +17,6 @@ type Consumer struct {
 
 func NewConsumer(stream chan string, brokerIP string, brokerPort string) *Consumer {
 	return &Consumer{
-		Data:       make(map[string]string),
 		stream:     stream,
 		brokerIP:   brokerIP,
 		brokerPort: brokerPort,
@@ -28,8 +24,6 @@ func NewConsumer(stream chan string, brokerIP string, brokerPort string) *Consum
 }
 
 func (cons *Consumer) StartConsumer() {
-	var mutex sync.Mutex
-
 	topics := []string{"test"}
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
@@ -66,7 +60,7 @@ func (cons *Consumer) StartConsumer() {
 			case *kafka.Message:
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
-				go cons.handleData(string(e.Value), &mutex)
+				cons.stream <- string(e.Value)
 			case kafka.PartitionEOF:
 				fmt.Printf("%% Reached %v\n", e)
 			case kafka.Error:
@@ -80,14 +74,4 @@ func (cons *Consumer) StartConsumer() {
 
 	c.Close()
 	fmt.Printf("Closing consumer\n")
-}
-
-func (cons *Consumer) handleData(finalData string, mutex *sync.Mutex) {
-	name := gjson.Get(finalData, "name").Str
-
-	mutex.Lock()
-	cons.Data[name] = finalData
-	mutex.Unlock()
-
-	cons.stream <- finalData
 }
