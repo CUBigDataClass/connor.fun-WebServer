@@ -80,6 +80,7 @@ func main() {
 	go func() {
 		messageID := 0
 		for {
+			time.Sleep(1 * time.Second)
 			select {
 			case data := <-dataStream:
 				es.SendEventMessage(data, "message", strconv.Itoa(messageID))
