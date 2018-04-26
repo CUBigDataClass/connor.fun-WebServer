@@ -138,6 +138,8 @@ func (serv *WebServer) getCurrentLocations(w http.ResponseWriter, r *http.Reques
 
 	switch r.Method {
 	case "GET":
+		// Reload locations
+		serv.locations = loadLocations("./locations.json")
 		response := string(serv.locations)
 		sendResponse(w, r, response)
 
