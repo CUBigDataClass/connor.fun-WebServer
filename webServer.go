@@ -14,6 +14,7 @@ import (
 
 	"github.com/CUBigDataClass/connor.fun-WebServer/consumer"
 	"github.com/antage/eventsource"
+	"github.com/patrickmn/go-cache"
 	"github.com/tidwall/gjson"
 )
 
@@ -21,7 +22,7 @@ type WebServer struct {
 	serverPort string
 	dataStream chan string
 	locations  []byte
-	data       map[string]string
+	data       *cache.Cache
 	dataMut    *sync.Mutex
 	cons       *consumer.Consumer
 	es         eventsource.EventSource
@@ -40,7 +41,6 @@ func main() {
 	brokerPort := string(os.Args[3])
 
 	dataStream := make(chan string)
-	data := make(map[string]string)
 	var mutex sync.Mutex
 
 	cons := consumer.NewConsumer(dataStream, brokerIP, brokerPort)
@@ -65,7 +65,7 @@ func main() {
 		serverPort: serverPort,
 		dataStream: dataStream,
 		locations:  loadLocations("./locations.json"),
-		data:       data,
+		data:       cache.New(1*time.Hour, 90*time.Minute),
 		dataMut:    &mutex,
 		cons:       cons,
 		es:         es,
@@ -86,7 +86,7 @@ func main() {
 
 				serv.dataMut.Lock()
 				key := gjson.Get(data, "ID").Str
-				serv.data[key] = data
+				serv.data.Set(key, data, cache.DefaultExpiration)
 				serv.dataMut.Unlock()
 
 				messageID++
@@ -116,8 +116,8 @@ func (serv *WebServer) getCurrentData(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		response := "["
 		serv.dataMut.Lock()
-		for _, data := range serv.data {
-			response += data + ","
+		for _, data := range serv.data.Items() {
+			response += fmt.Sprint(data.Object) + ","
 		}
 		response = strings.TrimSuffix(response, ",")
 		serv.dataMut.Unlock()
