@@ -1,3 +1,5 @@
+.gitignore
 .vscode
 localTest
-localTest/*
+vendor
+sample
